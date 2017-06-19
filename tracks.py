@@ -166,7 +166,7 @@ twopi = 2*pi
 rt2 = sqrt(2)
 
 
-def find_closest(thisdot, trackids, n=1, maxdist=20., giveup=10, cut=False):
+def find_closest(thisdot, trackids, n=1, maxdist=20., giveup=10, cut=False, pftrees = None, pfsets = None):
     """recursive function to find nearest dot in previous frame.
 
     looks further back until it finds the nearest particle
@@ -220,7 +220,7 @@ def find_closest(thisdot, trackids, n=1, maxdist=20., giveup=10, cut=False):
                 return oldtrackid
     elif n < giveup:
         return find_closest(thisdot, trackids, n=n+1,
-                            maxdist=maxdist, giveup=giveup, cut=cut)
+                            maxdist=maxdist, giveup=giveup, cut=cut, pftrees = pftrees, pfsets = pfsets)
     else:
         # give up after giveup frames
         newtrackid = trackids.max() + 1
@@ -231,7 +231,7 @@ def find_closest(thisdot, trackids, n=1, maxdist=20., giveup=10, cut=False):
 
 
 def find_tracks(pdata, maxdist=20, giveup=10, n=0, stub=0,
-                cut=False, boundary=None, margin=0):
+                cut=False, boundary=None, margin=0, pftrees = None, pfsets = None):
     """ Track dots from frame-to-frame, giving each particle a unique and
         persistent id, called the trackid.
 
@@ -289,7 +289,7 @@ def find_tracks(pdata, maxdist=20, giveup=10, n=0, stub=0,
         # This must remain a simple loop because trackids gets modified
         # and passed into the function with each iteration
         trackids[i] = find_closest(pdata.item(i), trackids,
-                                   maxdist=maxdist, giveup=giveup, cut=cut)
+                                   maxdist=maxdist, giveup=giveup, cut=cut, pftrees = pftrees, pfsets = pfsets)
 
     if verbose:
         datalen = len(pdata)
@@ -1896,7 +1896,7 @@ if __name__ == '__main__':
                     track_stub=args.stub, track_cut=args.cut)
         trackids = find_tracks(pdata, maxdist=args.maxdist, giveup=args.giveup,
                                n=args.number, stub=args.stub, cut=args.cut,
-                               boundary=args.boundary, margin=args.side)
+                               boundary=args.boundary, margin=args.side, pftrees = pftrees, pfsets = pfsets)
         trackids = remove_duplicates(trackids, data=pdata, verbose=args.verbose)
     else:
         trackids = None

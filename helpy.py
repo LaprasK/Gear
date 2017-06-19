@@ -1640,6 +1640,7 @@ def parse_slice(desc, shape=0, index_array=False):
 
 def find_tiffs(path='', prefix='', meta='', frames='', single=False,
                load=False, verbose=False, maxsize=100e6):
+    # difference between path and prefix?
     meta = meta or load_meta(prefix)
     path = path or meta.get('path_to_tiffs', prefix)
     path = drive_path(path, both=True)
