@@ -174,27 +174,27 @@ def find_closest(thisdot, trackids, n=1, maxdist=20., giveup=10, cut=False, pftr
     """
     info = 'New track {:5d}, frame {:4d}, n {:2d}, dot {:5d}, from'.format
     frame = thisdot[0]
-    if cut is not False and cut[thisdot[-1]]:
+    if cut is not False and cut[thisdot[-1]]: #[thisdot[-1]] is ID, if cut[ID] == true and cut so return -1
         return -1
     if frame < n:  # at (or recursed back to) the first frame
         newtrackid = trackids.max() + 1
         if verbose:
-            print info(newtrackid, frame, n, thisdot[-1]),
+            print info(newtrackid, frame, n, thisdot[-1]),  
             print "first frame!"
         return newtrackid
-    oldtree = pftrees[frame-n]
-    thisdotxy = thisdot[1:3]
+    oldtree = pftrees[frame-n]  #previous frame KDTree
+    thisdotxy = thisdot[1:3]   # get xy position
     maxdist_n = sqrt(n) * maxdist
-    mindist, mini = oldtree.query(thisdotxy, distance_upper_bound=maxdist_n)
-    if mindist < maxdist_n:
+    mindist, mini = oldtree.query(thisdotxy, distance_upper_bound=maxdist_n) #mindist is distance, mini is ID
+    if mindist < maxdist_n:  # the distance of nearest center is smaller than max_dist
         # a close one! Is there another dot in the current frame that's closer?
-        closest = pfsets[frame-n].item(mini)
-        curtree = pftrees[frame]
-        closestxy = closest[1:3]
-        mindist2, mini2 = curtree.query(closestxy, distance_upper_bound=mindist)
-        if mindist2 < mindist:
+        closest = pfsets[frame-n].item(mini)  # get the nearest pt in the previous frame get the whole data.
+        curtree = pftrees[frame] # current kDTree
+        closestxy = closest[1:3] # get the position data of the nearest xy
+        mindist2, mini2 = curtree.query(closestxy, distance_upper_bound=mindist) # double check? the upper_bound is different from previous case
+        if mindist2 < mindist:  # I don't understand here
             # create new trackid to be deleted (or overwritten?)
-            newtrackid = trackids.max() + 1
+            newtrackid = trackids.max() + 1 #it's a number here
             if verbose:
                 print info(newtrackid, frame, n, thisdot[-1]),
                 print "dot {} closer to parent {} (track {})".format(
@@ -202,14 +202,14 @@ def find_closest(thisdot, trackids, n=1, maxdist=20., giveup=10, cut=False, pftr
                     trackids[closest[-1]])
 
             return newtrackid
-        if cut is not False and cut[closest[-1]]:
+        if cut is not False and cut[closest[-1]]:  #if closest belong to cut range
             newtrackid = trackids.max() + 1
             if verbose:
                 print info(newtrackid, frame, n, thisdot[-1]),
                 print "cutting track", trackids[closest[-1]]
             return newtrackid
         else:
-            oldtrackid = trackids[closest[-1]]
+            oldtrackid = trackids[closest[-1]]  # this closest[-1] doesn't work if I filter the data!!!!
             if oldtrackid == -1:
                 newtrackid = trackids.max() + 1
                 if verbose:
@@ -280,7 +280,7 @@ def find_tracks(pdata, maxdist=20, giveup=10, n=0, stub=0,
         margin = margin or 6*mm  # use 6 mm if margin not specified
         meta.update(boundary=boundary, track_cut_margin=margin)
         rs = np.hypot(pdata['x'] - x0, pdata['y'] - y0)
-        cut = rs > R - margin
+        cut = rs > R - margin  # cut is true if you need cut
         print "cutting at boundary", boundary,
         print 'with margin {:.1f} pix = {:.1f} mm'.format(margin, margin/mm)
 
