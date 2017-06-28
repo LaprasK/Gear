@@ -111,10 +111,51 @@ def noise_derivatives(tdata, width=(0.65,), side=1, fps=1):
     return v
 
 
-def compile_noise(tracksets, width=(0.65,), cat=True, side=1, fps=1):
+
+def ring_velocity_derivatives(tdata, width=(0.65,), side=36, fps=2.5, x0 = 0, y0 = 0):
+    shape = ((len(width),) if len(width) > 1 else ()) + tdata.shape
+    vring_dtype = np.dtype({'names': 'f t x y o corient vorient vo vx vy vring'.split(),
+                        'formats': 'u2 i4 f4 f4 f4 f4 f4 f4 f4 f4 f4'.split()})
+    v = np.empty(shape, vring_dtype)
+    x = tdata['f']/fps
+    fields = 'f t x y o'.split()
+    for f in fields:
+        v[f] = tdata[f]
+    x_cor, y_cor = tdata['x'], tdata['y']
+    x_pos = x_cor - x0
+    y_pos = y_cor - y0
+    angles = np.arctan2(*[y_pos, x_pos])
+    v['corient'] = angles % (2*np.pi)
+    v['vorient'] = (angles - np.pi/2)%(2 * np.pi)
+    cos, sin = np.cos(v['vorient']), np.sin(v['vorient'])
+    unit = {'vx': side, 'vy': side, 'vo': 1}
+    pos_temp = 'o x y'.split()
+    v_temp = 'vo vx vy'.split()  
+    for i in range(len(pos_temp)):
+        v[v_temp[i]] = np.array([curve.der(tdata[pos_temp[i]]/unit[v_temp[i]], x=x, iwidth=w)  
+                           for w in width]).squeeze()
+#    v['v'] = np.hypot(v['x'], v['y'])
+    v['vring'] = v['vx']*cos + v['vy']*sin
+#    v['perp'] = v['x']*sin - v['y']*cos
+#    v0 = v['par'].mean(-1, keepdims=len(shape) > 1)
+#    v['etax'] = v['x'] - v0*cos
+#    v['etay'] = v['y'] - v0*sin
+#    v['eta'] = np.hypot(v['etax'], v['etay'])
+#    v['etapar'] = v['par'] - v0
+#    v = helpy.add_self_view(v, ('x', 'y'), 'xy')
+#    v = helpy.add_self_view(v, ('par', 'perp'), 'nt')
+    return v
+
+
+
+def compile_noise(tracksets, width=(0.65,), cat=True, side=1, fps=1, ring = None, x0 = 0, y0 = 0):
     vs = {}
     for prefix, tsets in tracksets.iteritems():
-        vsets = {t: noise_derivatives(ts, width=width, side=side, fps=fps)
+        if not ring:
+            vsets = {t: noise_derivatives(ts, width=width, side=side, fps=fps)
+                 for t, ts in tsets.iteritems()}
+        else:
+            vsets = {t: ring_velocity_derivatives(ts, width=width, side=side, fps=fps, x0=x0, y0=y0)
                  for t, ts in tsets.iteritems()}
         if cat:
             fsets, fvsets = helpy.load_framesets((tsets, vsets))

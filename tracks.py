@@ -203,7 +203,7 @@ def find_closest(thisdot, trackids, n=1, maxdist=20., giveup=10, cut=False, pftr
 
             return newtrackid
         if cut is not False and cut[closest[-1]]:  #if closest belong to cut range
-            newtrackid = trackids.max() + 1
+            newtrackid = trackids.max() + 1   # the cutting particle move into the non-cutting range, which creates a new ID
             if verbose:
                 print info(newtrackid, frame, n, thisdot[-1]),
                 print "cutting track", trackids[closest[-1]]
@@ -215,7 +215,7 @@ def find_closest(thisdot, trackids, n=1, maxdist=20., giveup=10, cut=False, pftr
                 if verbose:
                     print info(newtrackid, frame, n, thisdot[-1]),
                     print "previous track cut"
-                return newtrackid
+                return newtrackid   #copy the old ID to the new one
             else:
                 return oldtrackid
     elif n < giveup:
@@ -290,8 +290,11 @@ def find_tracks(pdata, maxdist=20, giveup=10, n=0, stub=0,
         # and passed into the function with each iteration
         trackids[i] = find_closest(pdata.item(i), trackids,
                                    maxdist=maxdist, giveup=giveup, cut=cut, pftrees = pftrees, pfsets = pfsets)
+#        print trackids[i]
 
-    if verbose:
+#    if verbose:
+#   change here for Jupyter Notebook Purpose
+    if False:
         datalen = len(pdata)
         assert datalen == len(trackids), "too few/many trackids"
         assert np.all(pdata['id'] == np.arange(datalen)), "gap in particle id"
@@ -312,6 +315,8 @@ def find_tracks(pdata, maxdist=20, giveup=10, n=0, stub=0,
         if n > 0:
             isstub |= trackids >= n + np.count_nonzero(stubs < n)
         trackids[isstub] = -1
+        return trackids
+    if n == 0:
         return trackids
 
 
@@ -1918,7 +1923,7 @@ if __name__ == '__main__':
             print "saving orientation data to",
             print save if verbose else os.path.basename(save)
             np.savez_compressed(save, odata=odata, omask=omask)
-        orients = odata['orient']
+        orients = odata['orient']  #orient is an radius between 0 ~ 2pi
     else:
         orients = None
     if args.track or args.orient:
