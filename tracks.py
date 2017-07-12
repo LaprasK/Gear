@@ -19,7 +19,7 @@ from collections import defaultdict
 from math import sqrt, exp
 
 import numpy as np
-from lmfit import Model
+#from lmfit import Model
 from cycler import cycler
 
 import helpy
