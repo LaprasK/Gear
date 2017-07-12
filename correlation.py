@@ -457,6 +457,7 @@ def crosscorr(f, g, side='both', cumulant=False, norm=False, mode='same',
         parameters
         ----------
         f, g:       1d arrays, as function of x, with same lengths
+                    input should not be 'int' type
         side:       'right' returns only dx > 0, (x' < x)
                     'left'  returns only dx < 0, (x < x')
                     'center' or 'both' returns entire correlation
@@ -502,7 +503,8 @@ def crosscorr(f, g, side='both', cumulant=False, norm=False, mode='same',
         msg = "overlap miscalculated:\n\t{}\n\t{}"
         assert np.allclose(n, overlap), msg.format(n, overlap)
         assert n[m] == l, "overlap normalizer not l at m"
-    c /= n
+#    c /= n
+    c = c/n
     c = c.T
     if verbose:
         msg = ("normalization calculations don't all match: "
