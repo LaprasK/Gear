@@ -21,6 +21,9 @@ import correlation as corr
 import os.path
 
 
+global sidelength
+sidelength = 38.0
+
 def data_filter(data, x0 , y0 , inner, outer):
     x = data['x']
     y = data['y']
@@ -28,6 +31,7 @@ def data_filter(data, x0 , y0 , inner, outer):
     distance = np.hypot(*position)
     legal = np.where((distance < outer) & (distance > inner))
     return legal
+
 
 def normalize(vector):
     dis = np.hypot(*vector.T)
@@ -77,29 +81,37 @@ def c2(a, b, cumulant = True):
         result = np.append(result, cum/(len(a) - i) )
     return result
  
-def plot_r_density(r_distribution, total_frame = 5999.0, side = 36.0, 
+def plot_r_density(r_distribution, total_frame = 6000.0, side = sidelength, 
                    r = 502.0, prefix = ''):
     ring_number = np.ceil(r/float(side))
-    n, bins = np.histogram(r_distribution, ring_number)
+    n, bins = np.histogram(r_distribution,  np.arange(1, ring_number+1))
     n = n * side**2 / total_frame
     r_sep = np.arange(r, 0 , -side)
-    r_sep = np.append(r_sep, 0)
+#    r_sep = np.append(r_sep, 0)
     ring_area = np.pi * np.array([r_sep[i]**2 - r_sep[i+1]**2 for i in range(len(r_sep) - 1)])
     density = n / ring_area[::-1]
     figure, ax = plt.subplots()
-    ax.bar(np.arange(1, len(density)+1), density, width=0.5, color = 'green')
+    ax.bar(np.arange(1, len(density)+1), density, width=0.5, color = 'darkorange')
     ax.set_title('Density for each ring')
     ax.set_ylabel('Density')
     ax.set_xlabel('Ring number')
+    ax.set_ylim([0,1])
+    for i, v in enumerate(density):
+        ax.text(i + 0.2, v , "%.2f" % v, color='blue', fontweight='bold')
     figure.savefig(prefix + '_Per_Ring.pdf')
+    return
+
+
+def plot_ring_velocity():
     return
 
 def plot_order(order, vring, prefix):
     figure, ax = plt.subplots()
+    
     return
     
 
-def layer_analysis(prefix):
+def layer_analysis(prefix, cutframe = 0):
 
     meta = helpy.load_meta(prefix)
     boundary = meta.get('boundary')
@@ -114,12 +126,12 @@ def layer_analysis(prefix):
     data_path = prefix + '_ring_data.npy'
     if os.path.exists(data_path):
         v_data = np.load(data_path)
-    else:
+    if True:
         data = helpy.load_data(prefix)
         data['o'] = (data['o'] + np.pi)%(2 * np.pi)   # flip the detected orientation
         tracksets = helpy.load_tracksets(data, run_track_orient=True, run_repair = 'interp')
         track_prefix = {prefix: tracksets}
-        v_data = velocity.compile_noise(track_prefix, width=(20,), cat = True, side = 36, fps = 2.5, 
+        v_data = velocity.compile_noise(track_prefix, width=(0.65,), cat = True, side = sidelength, fps = 2.5, 
                                    ring = True, x0= x0, y0 = y0)
         np.save(data_path, v_data)
     
@@ -127,7 +139,7 @@ def layer_analysis(prefix):
     order, vsring, frame, number, difference, vo = (list() for k in range(6))
     r_density, ori_distr, order_distr= (np.empty(0) for k in range(3))
     for f, framedata in fdata.iteritems():
-        legal = data_filter(framedata, x0, y0, R - 40, R)
+        legal = data_filter(framedata, x0, y0, R - sidelength, R)
         length = len(legal[0])
         number.append(length)    # number in ring
         legal_data = framedata[legal]
@@ -145,17 +157,19 @@ def layer_analysis(prefix):
         order.append(np.mean(ring_orient)/np.sin(np.pi/4))
         vsring.append(np.mean(vring))
         vo.append(np.mean(vorient))
-        if f > 4000:
+        if f >= cutframe:
             r_density = np.concatenate((r_density, framedata['r']))
             ori_distr = np.concatenate((ori_distr, legal_data['o'] % (2 * np.pi)))
             order_distr = np.concatenate((order_distr, ring_orient))        
-    plot_plot_r_density(r_density, side = 36.0, r = R, prefix = prefix)
-    return 
+    plot_r_density(r_density, total_frame= len(frame) - cutframe ,side = sidelength, r = R, prefix = prefix)
+
+    return r_density, vsring
 #    return order, vsring, r_density, vo
 #    return frame, order, vsring, number, empty_ring
 
-def main(prefix):
-    return
+#if __name__ == '__main__':
+#    prefix2 = '/Users/zhejun/Document/Result/0710_order/result'
+#    layer_analysis(prefix2) 
 
     
     
