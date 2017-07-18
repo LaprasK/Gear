@@ -17,7 +17,7 @@ from itertools import izip
 import numpy as np
 from numpy.lib.function_base import _hist_bin_auto as hist_bin_auto
 from scipy import ndimage
-
+from termcolor import colored
 # skimage (scikit-image) changed the location, names, and api of several
 # functions at versions 0.10 and 0.11 (at leaste), but they still have
 # effectively the same functionality. to run with old versions of skimage (from
@@ -69,6 +69,7 @@ if __name__ == '__main__':
     arg('--cmin', type=int, help='Min area for corners')
     arg('--cmax', type=int, help='Max area for corners')
     arg('--cecc', default=.8, type=float, help='Max ecc for corners')
+    arg('--ncen', type = int, required = True, help = 'Experimental particle number')
     args = parser.parse_args()
 
 
@@ -574,7 +575,10 @@ if __name__ == '__main__':
         if not n % print_freq:
             fmt = '{:3d} {}s'.format
             print os.path.basename(filename).rjust(20), 'Found',
-            print ', '.join([fmt(len(r), d) for r, d in zip(ret, dots)])
+            n = {'center': args.ncen, 'corner': args.ncen * 3}
+            print ', '.join([colored(fmt(len(r), d), 
+                                     'red' if n[d] > len(r) else 'green')
+                            for r, d in zip(ret, dots)])
         return ret if args.both else ret[0]
 
     print_freq = 1 if args.verbose else len(filenames)//100 + 1
