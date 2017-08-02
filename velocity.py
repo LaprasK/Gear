@@ -114,8 +114,8 @@ def noise_derivatives(tdata, width=(0.65,), side=1, fps=1):
 
 def ring_velocity_derivatives(tdata, width=(0.65,), side=36, fps=2.5, x0 = 0, y0 = 0):
     shape = ((len(width),) if len(width) > 1 else ()) + tdata.shape
-    vring_dtype = np.dtype({'names': 'f t x y o r corient vorient vo vx vy vring'.split(),
-                        'formats': 'u2 i4 f4 f4 f4 f4 f4 f4 f4 f4 f4 f4'.split()})
+    vring_dtype = np.dtype({'names': 'f t x y o r corient vorient vo vx vy vring vpar'.split(),
+                        'formats': 'u2 i4 f4 f4 f4 f4 f4 f4 f4 f4 f4 f4 f4'.split()})
     v = np.empty(shape, vring_dtype)
     x = tdata['f']/fps
     fields = 'f t x y o'.split()
@@ -137,6 +137,7 @@ def ring_velocity_derivatives(tdata, width=(0.65,), side=36, fps=2.5, x0 = 0, y0
                            for w in width]).squeeze()
 #    v['v'] = np.hypot(v['x'], v['y'])
     v['vring'] = v['vx']*cos + v['vy']*sin
+    v['vpar'] = v['vx']*sin - v['vy']*cos
 #    v['perp'] = v['x']*sin - v['y']*cos
 #    v0 = v['par'].mean(-1, keepdims=len(shape) > 1)
 #    v['etax'] = v['x'] - v0*cos

@@ -533,7 +533,7 @@ def crosscorr(f, g, side='both', cumulant=False, norm=False, mode='same',
         if side == 'center':
             return np.arange(-m, L-m), c
         elif side == 'left':
-            # return np.arange(0, -m-1, -1), c[m::-1]
+            # return np.arange(0, -m-1, -1), c[m::-1] 
             return np.arange(-m, 1), c[:m+1]
         elif side == 'right':
             return np.arange(0, L-m), c[m:]

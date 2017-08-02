@@ -46,27 +46,38 @@ def find_boundary(prefix):
     boundary = helpy.circle_click(first_tif)
     return boundary, first_tif
 
-def c3(a, b, cumulant = True):
+def correlation(a, b, cumulant = True, side = 'left'):
+    '''
+    left: a(t)*b(t+tau)
+    right: a(t)*b(t-tau)
+    '''
+    
     if cumulant:
         a = a - a.mean()
         b = b - b.mean()
     from scipy.signal import correlate
     d = correlate(a, b, mode = 'full')
     c = np.concatenate((np.cumsum(a*b), np.cumsum((a*b)[::-1])[::-1][1:]))
-    return d/c    
+    l = len(a)
+    cor = d/c
+    if side == 'left':
+        cor = cor[l-1:l-2-l//2:-1]
+    elif side == 'right':
+        cor = cor[l-1:l+l//2]
+    return cor    
 
-def correlation(a, b, cumulant = False):
-    result = np.empty(0)
-    if cumulant:
-        a = a - a.mean()
-        b = b - b.mean()
-    for i in np.arange(len(a)//2):
-        cum, var = [0, 0]
-        for j in np.arange(len(a) - i):
-            cum += (a[j] * b[j + i])
-            var += (a[j] * b[j])
-        result = np.append(result, cum/var)
-    return result
+#def correlation(a, b, cumulant = False):
+#    result = np.empty(0)
+#    if cumulant:
+#        a = a - a.mean()
+#        b = b - b.mean()
+#    for i in np.arange(len(a)//2):
+#        cum, var = [0, 0]
+#        for j in np.arange(len(a) - i):
+#            cum += (a[j] * b[j + i])
+#            var += (a[j] * b[j])
+#        result = np.append(result, cum/var)
+#    return result
 
 
 def c2(a, b, cumulant = True):
@@ -102,20 +113,82 @@ def plot_r_density(r_distribution, total_frame = 6000.0, side = sidelength,
     return
 
 
-def plot_ring_velocity():
-    return
-
-def plot_order(order, vring, prefix):
+def plot_order_distribution(order_distribution, prefix = ''):
     figure, ax = plt.subplots()
-    
+    ax.hist(order_distribution, 100, range = [-1, 1], color = 'darkorange')
+    ax.set_title('Order_Parameter_Distribution')
+    figure.savefig(prefix + '_order_dist.pdf')
     return
-    
 
-def layer_analysis(prefix, cutframe = 0):
+def plot_vpar_distribution(vpar, prefix = ''):
+    figure, ax = plt.subplots()
+    ax.hist(vpar, 100, color = 'darkorange')
+    ax.set_title('V_par_Distribution')
+    figure.savefig(prefix + 'V_par_dist.pdf')
+
+def plot_order(order, vring, vo, prefix = '', cutframe = 0, smoothed = True):
+    if smoothed:
+        order = order[40: len(order)-40]
+        vring = vring[40: len(vring)-40]
+        vo = vo[40: len(vo) - 40]   
+    figure, ax = plt.subplots(3, sharex = True)
+    ax[0].plot(np.arange(len(vring)), vring, color = 'r', linewidth = 0.8)
+    ax[0].set_title('Velocity vs Frame')
+#    ax.set_xlabel('Frame Number')
+    ax[0].set_ylabel('Smoothed V(size/shake)')
+#    figure.savefig(prefix + '_Velocity.pdf')
+#    figure, ax = plt.subplots()
+    ax[1].plot(np.arange(len(order)), order, color = 'green', linewidth = 0.8)
+    ax[1].set_title('Order Parameter vs Frame')
+    ax[1].set_ylabel('O')
+    ax[2].plot(np.arange(len(vo)), vo, color = 'blue', linewidth = 0.8)
+    ax[2].set_title('V_orientation vs Frame')
+    ax[2].set_ylabel('V_o')
+    figure.savefig(prefix +'_velocity_order.pdf')
+    
+    figure, axr = plt.subplots(3, sharex = True)
+    axr[0].plot(correlation(vring[cutframe:], vring[cutframe:], cumulant = False), 
+       color = 'r', linewidth = 0.8)
+    axr[0].set_title('Velocity Auto-Correlation')
+    axr[0].set_ylim([0, 1.2])
+    axr[1].plot(correlation(order[cutframe:], order[cutframe:], cumulant = False), 
+       color = 'green', linewidth = 0.8)
+    axr[1].set_title('Order Auto-Correlation')
+    axr[1].set_ylim([0, 1.2])
+    axr[2].plot(correlation(vo[cutframe:], vo[cutframe:], cumulant = False),
+       color = 'b', linewidth = 0.8)
+    axr[2].set_title('V_o Auto-Correlation')
+    axr[2].set_ylim([0, 1.2])
+    figure.savefig(prefix + '_Auto-Correlation.pdf')
+    
+    figure, ax = plt.subplots(2, sharex = True)
+    ax[0].plot(correlation(vring[cutframe:], order[cutframe:], cumulant = True),
+            color = 'r', linewidth = 0.8)
+    ax[0].set_ylim(ymin = -0.2)
+    ax[0].set_title('Vring Fluctuation Correlation Function')
+    ax[1].plot(correlation(vo[cutframe:], order[cutframe:], cumulant = True),
+            color = 'green', linewidth = 0.8)
+    ax[1].set_ylim(ymin = -0.2)
+    ax[1].set_title('Vorientation Fluctuation Correlation Function')
+    figure.savefig(prefix + '_Fluctuation_Correlation.pdf')
+    return
+
+
+
+def plot_diff(diff, prefix = ''):
+    figure, ax = plt.subplots()
+    ax.plot(diff, linewidth = 0.8, color = 'blue')
+    ax.set_title('+ and - difference')
+    ax.set_ylabel('N+ - N-')
+    figure.savefig(prefix + '_Difference.pdf')
+    return
+
+def layer_analysis(prefix, cutframe = 0, layer_number = 1, smoothed = True):
 
     meta = helpy.load_meta(prefix)
     boundary = meta.get('boundary')
     if boundary is None or boundary == [0.0]*3:
+#    if True:
         boundary, path = find_boundary(prefix)
         meta.update(boundary = boundary)
         meta['path_to_tiffs'] = path
@@ -131,14 +204,15 @@ def layer_analysis(prefix, cutframe = 0):
         data['o'] = (data['o'] + np.pi)%(2 * np.pi)   # flip the detected orientation
         tracksets = helpy.load_tracksets(data, run_track_orient=True, run_repair = 'interp')
         track_prefix = {prefix: tracksets}
-        v_data = velocity.compile_noise(track_prefix, width=(0.65,), cat = True, side = sidelength, fps = 2.5, 
+        v_data = velocity.compile_noise(track_prefix, width=(20,), cat = True, side = sidelength, fps = 2.5, 
                                    ring = True, x0= x0, y0 = y0)
         np.save(data_path, v_data)
     
     fdata = helpy.load_framesets(v_data)
     order, vsring, frame, number, difference, vo = (list() for k in range(6))
-    r_density, ori_distr, order_distr= (np.empty(0) for k in range(3))
+    r_density, ori_distr, order_distr, vpar= (np.empty(0) for k in range(4))
     for f, framedata in fdata.iteritems():
+#        legal = data_filter(framedata, x0, y0, R - 2 * sidelength, R - sidelength)
         legal = data_filter(framedata, x0, y0, R - sidelength, R)
         length = len(legal[0])
         number.append(length)    # number in ring
@@ -156,14 +230,23 @@ def layer_analysis(prefix, cutframe = 0):
         frame.append(f)
         order.append(np.mean(ring_orient)/np.sin(np.pi/4))
         vsring.append(np.mean(vring))
-        vo.append(np.mean(vorient))
+        vo.append(np.mean(vorient))       
         if f >= cutframe:
             r_density = np.concatenate((r_density, framedata['r']))
             ori_distr = np.concatenate((ori_distr, legal_data['o'] % (2 * np.pi)))
-            order_distr = np.concatenate((order_distr, ring_orient))        
-    plot_r_density(r_density, total_frame= len(frame) - cutframe ,side = sidelength, r = R, prefix = prefix)
-
-    return r_density, vsring
+            order_distr = np.concatenate((order_distr, ring_orient))
+            vpar = np.concatenate((vpar, legal_data['vpar']))
+    vsring = np.array(vsring)
+    order = np.array(order)
+    vo = np.array(vo)
+    difference = np.array(difference)
+    plot_r_density(r_density, total_frame= len(frame) - cutframe ,
+                   side = sidelength, r = R, prefix = prefix)
+    plot_order(order = order, vring = vsring, vo = vo, prefix = prefix, smoothed= smoothed)
+    plot_diff(diff = difference, prefix = prefix)
+    plot_order_distribution(order_distribution= order_distr, prefix = prefix)
+    plot_vpar_distribution(vpar = vpar, prefix = prefix)
+    return  vsring, order, vo, order_distr, vpar
 #    return order, vsring, r_density, vo
 #    return frame, order, vsring, number, empty_ring
 
