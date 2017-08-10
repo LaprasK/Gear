@@ -19,6 +19,7 @@ from scipy.spatial import cKDTree as KDTree
 import velocity
 import correlation as corr
 import os.path
+from scipy.signal import correlate
 
 
 global sidelength
@@ -55,7 +56,6 @@ def correlation(a, b, cumulant = True, side = 'left'):
     if cumulant:
         a = a - a.mean()
         b = b - b.mean()
-    from scipy.signal import correlate
     d = correlate(a, b, mode = 'full')
     c = np.concatenate((np.cumsum(a*b), np.cumsum((a*b)[::-1])[::-1][1:]))
     l = len(a)
@@ -79,6 +79,25 @@ def correlation(a, b, cumulant = True, side = 'left'):
 #        result = np.append(result, cum/var)
 #    return result
 
+
+def cc(a, b, cumulant = True, side = 'left'):
+    if cumulant:
+        a = a - a.mean()
+        b = b - b.mean()
+    cor = correlate(a, b, mode = 'full')
+    n1 = np.cumsum(a**2)
+    n2 = np.cumsum(b**2)
+    n = n1 * n2
+    norm = np.sqrt(np.concatenate((n, n[::-1][1:])))
+    cor = cor / norm
+    l = len(a)
+    if side == 'left':
+#        cor = cor[l-1:l-2-l//2:-1]
+        cor = cor[l-1::-1]
+    if side == 'right':
+#        cor = cor[l-1:l+l//2]
+        cor = cor[l-1::]
+    return cor
 
 def c2(a, b, cumulant = True):
     result = np.empty(0)
@@ -128,8 +147,8 @@ def plot_vpar_distribution(vpar, prefix = ''):
 
 def plot_order(order, vring, vo, prefix = '', cutframe = 0, smoothed = True):
     if smoothed:
-        order = order[40: len(order)-40]
-        vring = vring[40: len(vring)-40]
+        order = order[2: len(order)-2]
+        vring = vring[2: len(vring)-2]
         vo = vo[40: len(vo) - 40]   
     figure, ax = plt.subplots(3, sharex = True)
     ax[0].plot(np.arange(len(vring)), vring, color = 'r', linewidth = 0.8)
@@ -183,8 +202,13 @@ def plot_diff(diff, prefix = ''):
     figure.savefig(prefix + '_Difference.pdf')
     return
 
-def layer_analysis(prefix, cutframe = 0, layer_number = 1, smoothed = True):
 
+def gaussian_test():
+    width = 3
+    return width
+
+def layer_analysis(prefix, cutframe = 0, layer_number = 1, grad = False, 
+                   skip = 1, smootehd = False):
     meta = helpy.load_meta(prefix)
     boundary = meta.get('boundary')
     if boundary is None or boundary == [0.0]*3:
@@ -204,16 +228,17 @@ def layer_analysis(prefix, cutframe = 0, layer_number = 1, smoothed = True):
         data['o'] = (data['o'] + np.pi)%(2 * np.pi)   # flip the detected orientation
         tracksets = helpy.load_tracksets(data, run_track_orient=True, run_repair = 'interp')
         track_prefix = {prefix: tracksets}
-        v_data = velocity.compile_noise(track_prefix, width=(20,), cat = True, side = sidelength, fps = 2.5, 
-                                   ring = True, x0= x0, y0 = y0)
+        v_data = velocity.compile_noise(track_prefix, width=(20,), cat = False, side = sidelength, fps = 2.5, 
+                                   ring = True, x0= x0, y0 = y0, skip = skip, grad = grad)
+        v_data = v_data[prefix]
         np.save(data_path, v_data)
     
     fdata = helpy.load_framesets(v_data)
     order, vsring, frame, number, difference, vo = (list() for k in range(6))
     r_density, ori_distr, order_distr, vpar= (np.empty(0) for k in range(4))
     for f, framedata in fdata.iteritems():
-#        legal = data_filter(framedata, x0, y0, R - 2 * sidelength, R - sidelength)
-        legal = data_filter(framedata, x0, y0, R - sidelength, R)
+        legal = data_filter(framedata, x0, y0, R - sidelength*layer_number, 
+                            R - sidelength*(layer_number - 1))
         length = len(legal[0])
         number.append(length)    # number in ring
         legal_data = framedata[legal]
