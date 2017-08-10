@@ -168,7 +168,7 @@ def label_particles_convolve(im, kern, thresh=3, rmv=None, **extra_args):
 
 Segment = namedtuple('Segment', 'x y label ecc area'.split())
 
-
+#rest 1
 def filter_segments(labels, max_ecc, min_area, max_area, keep=False,
                     circ=None, intensity=None, **extra_args):
     """ filter out non-particle segments of an image based on shape criteria
