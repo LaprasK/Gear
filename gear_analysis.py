@@ -208,7 +208,7 @@ def gaussian_test():
     return width
 
 def layer_analysis(prefix, cutframe = 0, layer_number = 1, grad = False, 
-                   skip = 1, smootehd = False):
+                   skip = 1, smoothed = False):
     meta = helpy.load_meta(prefix)
     boundary = meta.get('boundary')
     if boundary is None or boundary == [0.0]*3:
@@ -228,7 +228,7 @@ def layer_analysis(prefix, cutframe = 0, layer_number = 1, grad = False,
         data['o'] = (data['o'] + np.pi)%(2 * np.pi)   # flip the detected orientation
         tracksets = helpy.load_tracksets(data, run_track_orient=True, run_repair = 'interp')
         track_prefix = {prefix: tracksets}
-        v_data = velocity.compile_noise(track_prefix, width=(20,), cat = False, side = sidelength, fps = 2.5, 
+        v_data = velocity.compile_noise(track_prefix, width=(0.575,), cat = False, side = sidelength, fps = 2.5, 
                                    ring = True, x0= x0, y0 = y0, skip = skip, grad = grad)
         v_data = v_data[prefix]
         np.save(data_path, v_data)
