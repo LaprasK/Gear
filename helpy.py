@@ -1735,8 +1735,8 @@ def circle_click(im):
     Then close the figure to allow the script to continue.
     """
     import matplotlib
-    if matplotlib.is_interactive():
-        raise RuntimeError("Cannot do circle_click in interactive/pylab mode")
+#    if matplotlib.is_interactive():
+#        raise RuntimeError("Cannot do circle_click in interactive/pylab mode")
     import matplotlib.pyplot as plt
 
     print ("Please click three points on circumference of the boundary, "

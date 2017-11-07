@@ -598,6 +598,7 @@ if __name__ == '__main__':
     points = mapper(get_positions, enumerate(filenames))
     points = map(np.vstack, izip(*points)) if args.both else [np.vstack(points)]
 
+
     if args.plot:
         fig, axes = plt.subplots(nrows=len(dots), ncols=2, sharey='row')
         axes = np.atleast_2d(axes)

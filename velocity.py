@@ -113,20 +113,20 @@ def noise_derivatives(tdata, width=(0.65,), side=1, fps=1):
 
 
 def ring_velocity_derivatives(tdata, width=(0.575,), side=36, fps=2.5, x0 = 0,
-                              y0 = 0, skip = 1, grad = False):
-    revised_shape = tuple(int(a/skip) for a in tdata.shape)
+                              y0 = 0, skip = 1, grad = False, start = 0):
+    revised_shape = tuple(int((a - start - 1)/skip) + 1 if skip != 1 else a for a in tdata.shape) 
     shape = ((len(width),) if len(width) > 1 else ()) + revised_shape
     vring_dtype = np.dtype({'names': 'f t x y o r corient vorient vo vx vy vring vpar v_p v_t'.split(),
                         'formats': 'u2 i4 f4 f4 f4 f4 f4 f4 f4 f4 f4 f4 f4 f4 f4'.split()})
     v = np.empty(shape, vring_dtype)
-    x = tdata['f'][::skip]/fps
+    x = tdata['f'][start::skip]/fps
     fields = 'f t x y o'.split()
     for f in fields:
-        v[f] = tdata[f][::skip]
+        v[f] = tdata[f][start::skip]
     x_cor, y_cor = v['x'], v['y']
     x_pos = x_cor - x0
     y_pos = y_cor - y0
-    v['r'] = np.hypot(*[x_pos, y_pos])/float(side)  # normalized by particle size
+    v['r'] = np.hypot(*[x_pos, y_pos])#/float(side)  # normalized by particle size
     angles = np.arctan2(*[y_pos, x_pos])
     v['corient'] = angles % (2*np.pi)
     v['vorient'] = (angles - np.pi/2)%(2 * np.pi)   # velocity_orientation along the ring
@@ -137,7 +137,7 @@ def ring_velocity_derivatives(tdata, width=(0.575,), side=36, fps=2.5, x0 = 0,
     v_temp = 'vo vx vy'.split()  
     for i in range(len(pos_temp)):
         if grad == False:       
-            v[v_temp[i]] = np.array([curve.der(tdata[pos_temp[i]]/unit[v_temp[i]], x=x, iwidth=w)  
+            v[v_temp[i]] = np.array([curve.der(v[pos_temp[i]]/unit[v_temp[i]], x=x, iwidth=w)  
                            for w in width]).squeeze()
         else:
             v[v_temp[i]] = np.gradient(v[pos_temp[i]]/unit[v_temp[i]]/skip*fps).squeeze()
@@ -155,11 +155,12 @@ def ring_velocity_derivatives(tdata, width=(0.575,), side=36, fps=2.5, x0 = 0,
 #    v = helpy.add_self_view(v, ('x', 'y'), 'xy')
 #    v = helpy.add_self_view(v, ('par', 'perp'), 'nt')
     return v
+ 
 
 
 
 def compile_noise(tracksets, width=(0.65,), cat=True, side=1, fps=1, ring = None,
-                  x0 = 0, y0 = 0, skip = 1, grad = False):
+                  x0 = 0, y0 = 0, skip = 1, grad = False, start = 0):
     vs = {}
     for prefix, tsets in tracksets.iteritems():
         if not ring:
@@ -167,7 +168,7 @@ def compile_noise(tracksets, width=(0.65,), cat=True, side=1, fps=1, ring = None
                  for t, ts in tsets.iteritems()}
         else:
             vsets = {t: ring_velocity_derivatives(ts, width=width, side=side, 
-                                                  fps=fps, x0=x0, y0=y0, skip = skip, grad = grad) 
+                                                  fps=fps, x0=x0, y0=y0, skip = skip, grad = grad, start = start) 
                 for t, ts in tsets.iteritems()}
         if cat:
             fsets, fvsets = helpy.load_framesets((tsets, vsets))

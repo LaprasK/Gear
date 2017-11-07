@@ -81,6 +81,10 @@ def correlation(a, b, cumulant = True, side = 'left'):
 
 
 def cc(a, b, cumulant = True, side = 'left'):
+    '''
+    left: a(t)*b(t+tau)
+    right: a(t)*b(t-tau)
+    '''
     if cumulant:
         a = a - a.mean()
         b = b - b.mean()
@@ -166,15 +170,15 @@ def plot_order(order, vring, vo, prefix = '', cutframe = 0, smoothed = True):
     figure.savefig(prefix +'_velocity_order.pdf')
     
     figure, axr = plt.subplots(3, sharex = True)
-    axr[0].plot(correlation(vring[cutframe:], vring[cutframe:], cumulant = False), 
+    axr[0].plot(correlation(vring[cutframe:], vring[cutframe:], cumulant = True), 
        color = 'r', linewidth = 0.8)
     axr[0].set_title('Velocity Auto-Correlation')
     axr[0].set_ylim([0, 1.2])
-    axr[1].plot(correlation(order[cutframe:], order[cutframe:], cumulant = False), 
+    axr[1].plot(correlation(order[cutframe:], order[cutframe:], cumulant = True), 
        color = 'green', linewidth = 0.8)
     axr[1].set_title('Order Auto-Correlation')
     axr[1].set_ylim([0, 1.2])
-    axr[2].plot(correlation(vo[cutframe:], vo[cutframe:], cumulant = False),
+    axr[2].plot(correlation(vo[cutframe:], vo[cutframe:], cumulant = True),
        color = 'b', linewidth = 0.8)
     axr[2].set_title('V_o Auto-Correlation')
     axr[2].set_ylim([0, 1.2])
@@ -234,37 +238,43 @@ def layer_analysis(prefix, cutframe = 0, layer_number = 1, grad = False,
         np.save(data_path, v_data)
     
     fdata = helpy.load_framesets(v_data)
-    order, vsring, frame, number, difference, vo = (list() for k in range(6))
-    r_density, ori_distr, order_distr, vpar= (np.empty(0) for k in range(4))
+    order, vsring, frame, number, difference, vo = (np.empty(0) for k in range(6))
+    r_density, ori_distr, order_distr, vpar, v_p, v_t, v_o= (np.empty(0) for k in range(7))
     for f, framedata in fdata.iteritems():
-        legal = data_filter(framedata, x0, y0, R - sidelength*layer_number, 
-                            R - sidelength*(layer_number - 1))
-        length = len(legal[0])
-        number.append(length)    # number in ring
-        legal_data = framedata[legal]
-        cen_orient = legal_data['corient']
-        cor_orient = legal_data['o']
-        vorient = legal_data['vo']
+#        legal = data_filter(framedata, x0, y0, R - sidelength*layer_number, 
+#                            R - sidelength*(layer_number - 1))
+        mask = (framedata['r'] < R - sidelength * (layer_number - 1)) & (
+                framedata['r'] > R - sidelength * layer_number)
+#        length = len(legal[0])
+        number = np.append(number,(sum(mask)))    # number in ring
+        layer_data = framedata[mask]
+        cen_orient = layer_data['corient']
+        cor_orient = layer_data['o']
         cen_unit_vector = np.array([np.cos(cen_orient), np.sin(cen_orient)]).T
         cor_unit_vector = np.array([np.cos(cor_orient), np.sin(cor_orient)]).T
-        ring_orient = - np.cross(cen_unit_vector, cor_unit_vector)
+        ring_orient = - np.cross(cen_unit_vector, cor_unit_vector)/np.sin(np.pi/4)
         clockwise = len(np.where(ring_orient > 0)[0])
         counter_clockwise = len(np.where(ring_orient < 0)[0])
-        difference.append(clockwise - counter_clockwise)   # n+ - n-
-        vring = legal_data['vring']
-        frame.append(f)
-        order.append(np.mean(ring_orient)/np.sin(np.pi/4))
-        vsring.append(np.mean(vring))
-        vo.append(np.mean(vorient))       
+        difference = np.append(difference, clockwise - counter_clockwise)   # n+ - n-
+        vring = layer_data['vring']
+#        frame = np.append(frame, f)
+        order = np.append(order, (np.mean(ring_orient)))
+        vsring = np.append(vsring, (np.mean(vring)))
+        '''
+        # need more consideration
+        '''
+        vorient = layer_data['vo'] - vring / layer_data['r']
+        vo = np.append(vo, (np.mean(vorient)))
+        # from this line, deal with data out_of layer
+        out_data = framedata[~mask]
+        v_p = np.append(v_p, out_data['v_p'])
+        v_t = np.append(v_t, out_data['v_t'])
+        v_o = np.append(v_o, out_data['vo'])
         if f >= cutframe:
             r_density = np.concatenate((r_density, framedata['r']))
-            ori_distr = np.concatenate((ori_distr, legal_data['o'] % (2 * np.pi)))
+            ori_distr = np.concatenate((ori_distr, layer_data['o'] % (2 * np.pi)))
             order_distr = np.concatenate((order_distr, ring_orient))
-            vpar = np.concatenate((vpar, legal_data['vpar']))
-    vsring = np.array(vsring)
-    order = np.array(order)
-    vo = np.array(vo)
-    difference = np.array(difference)
+            vpar = np.concatenate((vpar, layer_data['vpar']))
     plot_r_density(r_density, total_frame= len(frame) - cutframe ,
                    side = sidelength, r = R, prefix = prefix)
     plot_order(order = order, vring = vsring, vo = vo, prefix = prefix, smoothed= smoothed)
