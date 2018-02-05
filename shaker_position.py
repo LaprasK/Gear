@@ -14,6 +14,7 @@ from positions import label_particles_walker
 import os
 from skimage.measure import label
 from skimage.morphology import label as sklabel
+from scipy.optimize import curve_fit
 
 Segment = namedtuple('Segment', 'x y label area'.split())
 
@@ -158,6 +159,9 @@ def shake(prefix, cutoff = 200, method = "convolve", manual = False):
         pts = np.array(pts, dtype = object)        
         labels[6].append(pts[0][1])
     return labels
+
+
+
         
 def plot_result(result, name):
     colors = ["r","g","b","yellow","black","cyan", "pink"]
@@ -173,6 +177,34 @@ def plot_result(result, name):
         i += 1
     fig.savefig("/Users/zhejun/Document/Result/" + name + ".pdf")
     return
+
+
+def sinfunc(t, A, w, p, c):  
+    return A * np.sin(w*t + p) + c
+
+def fit_sin(yy):
+    '''Fit sin to the input time sequence, and return fitting parameters "amp", "omega", "phase", "offset", "freq", "period" and "fitfunc"'''
+    tt = np.arange(len(yy))
+    yy = np.array(yy)
+    ff = np.fft.fftfreq(len(tt), (tt[1]-tt[0]))   # assume uniform spacing
+    Fyy = abs(np.fft.fft(yy))
+    guess_freq = abs(ff[np.argmax(Fyy[1:])+1])   # excluding the zero frequency "peak", which is related to offset
+    guess_amp = np.std(yy) * 2.**0.5
+    guess_offset = np.mean(yy)
+    guess = np.array([guess_amp, 2.*np.pi*guess_freq, 0., guess_offset])
+    popt, pcov = curve_fit(sinfunc, tt, yy, p0=guess)
+    return popt
+
+def check_freq(labels):
+    freq = dict()
+    phase = dict()
+    ampl = dict()
+    for key, value in labels.items():
+        a, omega, p = fit_sin(value)[:3]
+        phase[key] = p
+        ampl[key] = a
+        freq[key] = 2*np.pi/omega
+    return ampl, freq, phase
     
         
         

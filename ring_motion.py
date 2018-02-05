@@ -12,7 +12,7 @@ import numpy as np
 import helpy
 import matplotlib.pyplot as plt
 import os
-from glob import glob
+import glob
 from scipy.signal import correlate
 import os
 from scipy import signal
@@ -70,8 +70,17 @@ def periodic_corr(a, cumulant = True):
     return roll
 
 
-def filter_shaker_freq():
-    b, a = signal
+def filter_shaker_freq(v, Q = 30.0, fps = 5.0, test = False):
+    w0 = 2.0 / fps
+    b, a = signal.iirnotch(w0, Q)
+    fil_v = signal.filtfilt(b, a, v)
+    if test:
+        freq = np.fft.fft(v)
+        pos = np.argsort(freq)[-3:-1:]
+        freq[pos] = 0 
+        fil_v = np.fft.ifft(freq)
+    return fil_v
+
 ###############################################################################
 
 def Find_Direct(PATH_TO_DATA, Result = 'result'):
@@ -80,12 +89,13 @@ def Find_Direct(PATH_TO_DATA, Result = 'result'):
     for one_density_analysis use
     """
     FILE_PATH = list()
-    for direct_name in glob(PATH_TO_DATA + '*/'):  # find all directoy under PATH_TO_DATA
+    for direct_name in glob.glob(PATH_TO_DATA + '*/'):  # find all directoy under PATH_TO_DATA
         FILE_PATH.append(os.path.join(direct_name, Result))
     return FILE_PATH
 
 
-def Group_Data_Save(PATH_TO_DATA, save_name='', width = 5 , skip = 1,start = 0, file_name = "All_result"):
+def Group_Data_Save(PATH_TO_DATA, save_name = '', width = 5 , skip = 1,start = 0,
+                    grad = False, filt = 5.0, fps = 5.0, file_name = "All_result", change_frequency = True):
     """
     save data from different path as a dictionary, use the path as the key
     """
@@ -97,17 +107,23 @@ def Group_Data_Save(PATH_TO_DATA, save_name='', width = 5 , skip = 1,start = 0, 
          #   total_data[prefix] = np.load(one_data_path).item()            
         #else:
          #   total_data[prefix] = one_density_analysis(prefix, width)
-        total_data[prefix] = one_density_analysis(prefix, width, skip)
-        one_density_plots(prefix, width, skip)
-    np.save(os.path.join(PATH_TO_DATA, "All_result_skip_"+str(skip)+"_width_" + str(width) + ".npy"), total_data)
+        if change_frequency:
+            fps = 250.0/float(eval(prefix.split('/')[-2]))
+        print(fps)
+        total_data[prefix] = one_density_analysis(prefix, width = width , skip = skip, 
+                  grad = grad, filt = filt, fps = fps, start = start)
+        one_density_plots(prefix, width = width , skip = skip, grad = grad, 
+                          filt = filt , fps = fps)
+    np.save(os.path.join(PATH_TO_DATA, 
+                         "All_result_skip_"+str(skip)+"_width_" + str(width)+ save_name + ".npy"), total_data)
     return total_data
 
-def Group_Analysis(PATH_TO_DATA, file_name = "All_result.npy"):
+def Group_Analysis(PATH_TO_DATA, file_name = "All_result.npy", filt = False, fps = 5.0):
     file_path = os.path.join(PATH_TO_DATA, file_name)
     if os.path.exists(file_path):
         total_data = np.load(file_path).item()
     else:
-        total_data = Group_Data_Save(PATH_TO_DATA, file_name)
+        total_data = Group_Data_Save(PATH_TO_DATA, file_name, filt = filt, fps = fps)
     return
 
                  
@@ -133,15 +149,32 @@ def find_boundary(prefix):
     return boundary, first_tif
 
 
-def load_one_density_data(prefix, sidelength = 38.0, width = 5, skip = 1, grad = False, start = 0):
+def load_one_density_data(prefix, sidelength = 38.0, width = 5, skip = 1, grad = False, start = 0, fps = 5.0, filt = False
+                          rearange = True):
     x0, y0, R = boundary(prefix)
     data = helpy.load_data(prefix)
     data['o'] = (data['o'] + np.pi)%(2 * np.pi)   # flip the detected orientation
-    tracksets = helpy.load_tracksets(data, run_track_orient=True, min_length = 150, run_repair = 'interp')
+    tracksets = helpy.load_tracksets(data, run_track_orient=True, min_length = 20, run_repair = 'interp')
     track_prefix = {prefix: tracksets}
-    v_data = velocity.compile_noise(track_prefix, width=(width,), cat = False, side = sidelength, fps = 5/float(skip), 
+    v_data = velocity.compile_noise(track_prefix, width=(width,), cat = False, side = sidelength, fps = fps/float(skip), 
                                ring = True, x0= x0, y0 = y0, skip = skip, grad = grad, start = start)
     v_data = v_data[prefix]
+    print(prefix)
+    if filt:
+        for key, values in v_data.items():
+            values['vring'] = filter_shaker_freq(values['vring'], fps = fps) 
+    if rearange:
+        orient_dict = dict()
+        temp = v_data.copy()
+        for key, value in temp.items():
+            orient_dict[value['corient'][0]] = key
+        orient_sort = np.sort(orient_dict.keys())
+        keys = np.sort(v_data.keys())
+        for i in np.arange(len(v_data.keys())):
+            v_data[keys[i]] = np.copy(temp[orient_dict[orient_sort[i]]])
+        for key, value in v_data.items():
+            for i in range(len(value['t'])):
+                value['t'][i] = key
     fdata = helpy.load_framesets(v_data)
     np.save((prefix +'_v_data_'+str(width)+'.npy'), v_data)
     np.save((prefix +'_frame_data_'+str(width)+'.npy'), fdata)
@@ -208,7 +241,8 @@ def plot_2d_correlation(matrix, prefix, width):
 
 def plot_individual_velocity(v, prefix, id_number, width):
     fig, ax = plt.subplots()
-    ax.plot(v)
+    ax.plot(v, 'b')
+    ax.set_title("velocity vs frame")
     fig.savefig(prefix + "_velocity_" + str(id_number) + str(width) + ".pdf")
     return
 
@@ -216,7 +250,8 @@ def plot_time_corr(cor, prefix, number, width):
     import matplotlib as mpl
     #mpl.rc('text', usetex = True)
     fig, ax = plt.subplots()
-    ax.plot(cor[:150], color = 'blue')
+    argmin = np.argmin(cor)
+    ax.plot(cor[:argmin*12], color = 'blue')
     ax.set_ylabel("Time Correlation")
     ax.set_xlabel("$\Delta t$")
     #ax.set_title("Time Correlation Averaged by Particles")
@@ -228,39 +263,56 @@ def plot_time_corr(cor, prefix, number, width):
 #Group Plot Function
 ###############################################################################
 
-def diff_den_time_corr(file_name, width = 5):
+def diff_quantity_plot(file_name, save_name, quantity ,width = 5):
     direct_name = os.path.dirname(file_name)
     cor_den = np.load(file_name).item()
     fig, ax = plt.subplots()
     keys = cor_den.keys()
-    number_keys = [eval(key[-9:-7]) for key in keys]
+    number_keys = [eval(key.split('/')[-2]) for key in keys]
     sort_index = np.argsort(number_keys)
     sort_keys = np.array(keys)[sort_index]
     for key in sort_keys:
-        ax.plot(cor_den[key]['time_correlation'][:80], linewidth = 2.2 , label = key[-9:-7])
+        ax.scatter(np.arange(20), cor_den[key]['time_correlation'][:20], linewidth = 2.2 , label = key.split('/')[-2])
+    ax.axhline(y = 0, color = 'black', linestyle = '--')
     ax.legend(fancybox=True)
-    ax.set_title("time correlation of differen density")
-    fig.savefig(os.path.join(direct_name, "time_correlation_density.jpeg"))
+    ax.set_title("time correlation of different " + quantity)
+    #ax.set_ylim([-0.2,0.4])
+    fig.savefig(os.path.join(direct_name, (save_name+"_" + quantity + "_time_correlation.pdf")))
     fig2, ax2 = plt.subplots()
     for key in sort_keys:
-        ax2.plot(cor_den[key]['correlation'], 'o--', lw = 2.5, label = key[-9:-7])
+        ax2.plot(cor_den[key]['correlation'], 'o--', lw = 2.5, label = key.split('/')[-2])
+    ax2.axhline(y = 0, color = 'black', linestyle = '--')
     ax2.legend(fancybox=True)
-    ax2.set_title("Particle ID correlation of different density")
-    fig2.savefig(os.path.join(direct_name, "velocity_correlation_density.jpeg"))
+    #ax2.set_yscale('log')
+    #ax2.set_xscale('log')
+    ax2.set_title("Particle ID correlation of different " + quantity)
+    fig2.savefig(os.path.join(direct_name, (save_name+"_" + quantity + "_velocity_correlation.pdf")))
+    fig3, ax3 = plt.subplots()
+    for key in sort_keys:
+        ax3.scatter(key.split('/')[-2] ,np.abs(cor_den[key]['v_average']) , alpha = 0.6, label = key.split('/')[-2])
+    ax3.set_title("Average Velocity of Different " + quantity)
+    ax3.legend(fancybox=True)
+    fig3.savefig(os.path.join(direct_name, (save_name+"_" + quantity + "_average_velocity.pdf")))
+    fig4, ax4= plt.subplots()
+    for key in sort_keys:
+        ax4.scatter(key.split('/')[-2] ,cor_den[key]['v_std'], alpha = 0.6, label = key.split('/')[-2])
+    ax4.set_title("Std of Velocity of Different " + quantity)
+    ax4.legend(fancybox=True)
+    fig4.savefig(os.path.join(direct_name, (save_name+"_" + quantity + "_velocity_std.pdf")))    
     return
 
 
 # One density Analysis and Result Plot
 ###############################################################################
-def vdata_analysis(prefix, width = 5, skip = 1, start = 0):
+def vdata_analysis(prefix, width = 5, skip = 1, start = 0, grad = False, filt = False, fps = 5.0):
     # get vdata
     v_path = prefix + '_v_data_'+ str(width) + '.npy'
     if False:
     #if os.path.exists(v_path):
         vdata = np.load(v_path).item()
     else:
-        vdata = load_one_density_data(prefix, width = width, skip = skip, start = start)[1]
-    
+        vdata = load_one_density_data(prefix, width = width, skip = skip, 
+                                      grad = grad, start = start, filt = filt, fps = fps)[1]
     #vstack vmatrix, axis = 0 is particle id, 
     for key, value in vdata.items():
         if key == 0:
@@ -280,14 +332,15 @@ def vdata_analysis(prefix, width = 5, skip = 1, start = 0):
     return vcor_average, v_matrix.T
 
 
-def one_density_analysis(prefix, width = 5, skip = 1, bulk = False, grad = False, start = 0):
+def one_density_analysis(prefix, width = 5, skip = 1, bulk = False, grad = False, 
+                         start = 0, filt = False, fps = 5.0):
     x0, y0, R = boundary(prefix)
     frame_path = prefix + '_frame_data_'+ str(width) + '.npy'
     if False:
     #if os.path.exists(frame_path):
         fdata = np.load(frame_path).item()
     else:
-        fdata = load_one_density_data(prefix, width = width, skip = skip, grad = grad)[0]    
+        fdata = load_one_density_data(prefix, width = width, skip = skip, grad = grad, filt = filt, fps = fps)[0]    
     vring_dist = np.empty(0)   # vring dist
     op_t = np.empty(0)  # op for each frame
     vr_time_op_dist= np.empty(0)  # vring * sign of op
@@ -298,6 +351,7 @@ def one_density_analysis(prefix, width = 5, skip = 1, bulk = False, grad = False
     vp_t = np.empty(0) # v_p in bulk
     vp_dist = np.empty(0) #vp in bulk
     vt_dist = np.empty(0)  # vt in bulk
+    v_par_matrix = np.empty(0) # vpar matrix
     vr_time_op_t = np.empty(0)
     for f, framedata in fdata.iteritems():
         mask = ( framedata['r'] < R ) & (framedata['r'] > R - 55)
@@ -312,12 +366,14 @@ def one_density_analysis(prefix, width = 5, skip = 1, bulk = False, grad = False
             v_matrix = layer_data['vring']
             v_err_matrix = layer_data['vring'] - layer_data['vring'].mean()
             v_corr = correlation_function(layer_data['vring'], layer_data['vring'])
+            v_par_matrix = layer_data['vpar']
             number = sum(mask)
+            
         else:
-            if f < 500:
-                v_matrix = np.vstack((v_matrix, layer_data['vring']))
-                v_err_matrix = np.vstack((v_err_matrix, layer_data['vring'] - layer_data['vring'].mean()))
+            v_matrix = np.vstack((v_matrix, layer_data['vring']))
+            v_err_matrix = np.vstack((v_err_matrix, layer_data['vring'] - layer_data['vring'].mean()))
             v_corr = np.vstack((v_corr, correlation_function(layer_data['vring'], layer_data['vring'])))
+            v_par_matrix = np.vstack((v_par_matrix, layer_data['vpar']))
         vring_dist = np.append(vring_dist, layer_data['vring'])
         vstd_t = np.append(vstd_t, layer_data['vring'].std())
         vr_time_op_dist = np.append(vr_time_op_dist, layer_data['vring'] * np.sign(ring_orient))
@@ -341,28 +397,33 @@ def one_density_analysis(prefix, width = 5, skip = 1, bulk = False, grad = False
     ring_data_result = dict()
     for name in all_data:
         ring_data_result[name] = eval(name)
-    time_correlation = vdata_analysis(prefix, width = width, skip = skip, start = start)[0]
+    time_correlation = vdata_analysis(prefix, width = width, skip = skip, 
+                                      start = start, filt = filt, grad = grad, 
+                                      fps = fps)[0]
     ring_data_result['time_correlation'] = time_correlation
+    ring_data_result['v_average'] = np.nanmean(v_matrix)
+    ring_data_result['v_std'] = np.nanstd(v_matrix)
+    ring_data_result['v_par_std'] = np.nanstd(v_par_matrix)
     np.save(prefix + '_single_density_' + str(width) + '.npy',ring_data_result)
     return ring_data_result
 
 
-def one_density_plots(prefix, width, skip):
+def one_density_plots(prefix, width = 5, skip= 1, grad = False, filt = False, fps = 5.0):
     file_name = prefix + '_single_density_' + str(width) + '.npy'
     if False:
     #if os.path.exists(prefix + '_single_density_' + str(width) + '.npy'):
         ring_data_result = np.load(prefix + '_single_density_' + str(width) + '.npy').item()
     else:
-        ring_data_result = one_density_analysis(prefix, width, skip)
-    vcor, vmatrix = vdata_analysis(prefix, width, skip)
+        ring_data_result = one_density_analysis(prefix, width = width, skip = skip, grad = grad, filt = filt, fps = fps)
+    vcor, vmatrix = vdata_analysis(prefix, width = width, skip = skip, grad = grad, filt = filt, fps = fps)
     cor2d = auto_correlation_function_2d(vmatrix)
     plot_2d_correlation(cor2d, prefix, width)
     plot_time_corr(vcor, prefix, ring_data_result['number'], width)
     plot_vcross(ring_data_result['correlation'], prefix, width)
     plot_std(ring_data_result['vstd_t'], prefix, width)
     plot_std_zoom(ring_data_result['vstd_t'], prefix, width)
-    plot_velocity_map(ring_data_result['v_matrix'], prefix, "_v", width)
-    plot_velocity_map(ring_data_result['v_err_matrix'], prefix, "_verror", width)
+    plot_velocity_map(ring_data_result['v_matrix'][:500], prefix, "_v", width)
+    plot_velocity_map(ring_data_result['v_err_matrix'][:500], prefix, "_verror", width)
     plot_individual_velocity(ring_data_result['v_matrix'][:,1], prefix, 1, width)
     return 
     
