@@ -139,6 +139,7 @@ def Group_Data_Save(PATH_TO_DATA, save_name = '', width = 5 , skip = 1,start = 0
     total_data = dict()
     prefixes = Find_Direct(PATH_TO_DATA)
     for prefix in prefixes:
+        print prefix
 #        one_data_path = prefix + '_single_density_'+ str(width) + '.npy'
         #if os.path.exists(one_data_path):
          #   total_data[prefix] = np.load(one_data_path).item()            
@@ -339,7 +340,8 @@ def diff_quantity_plot(file_name, save_name, quantity ,width = 5, vcompare = Fal
     #ax.tick_params(axis='both', which='major', labelsize = 10)
     #ax.set_ylim([-0.2,0.4])
     fig.savefig(os.path.join(direct_name, (save_name+"_" + quantity + "_time_correlation.pdf")), dpi = 400)
-    
+
+
     fig2, ax2 = plt.subplots()
     ax2.set_color_cycle([scalarMap.to_rgba(i) for i in range(NUM_COLORS)])
     cor_length = list()
@@ -351,7 +353,7 @@ def diff_quantity_plot(file_name, save_name, quantity ,width = 5, vcompare = Fal
         if numbers != 6:
             id_number.append(numbers)
             coeff = float(max_number)/numbers if normalize else 1
-            cor_length.append(find_cor_length(correlation_result) * coeff)
+#            cor_length.append(find_cor_length(correlation_result) * coeff)
         flows.append(cor_den[key]['flow_rate'])
         ax2.plot(correlation_result, 'o--', lw = 2.5, label = key.split('/')[-2])
     ax2.axhline(y = 0, color = 'black', linestyle = '--')
@@ -363,7 +365,7 @@ def diff_quantity_plot(file_name, save_name, quantity ,width = 5, vcompare = Fal
     #ax2.set_ylabel("correlation", fontsize = 15)
     #ax2.tick_params(axis='both', which='major', labelsize = 15)
     fig2.savefig(os.path.join(direct_name, (save_name+"_" + quantity + "_velocity_correlation.pdf")), dpi = 400)
-    
+    """
     len_fig, len_ax = plt.subplots()
     len_ax.set_color_cycle([scalarMap.to_rgba(i) for i in range(NUM_COLORS)])
     len_ax.set_xlabel("Vacancy", fontsize = 15)
@@ -376,7 +378,7 @@ def diff_quantity_plot(file_name, save_name, quantity ,width = 5, vcompare = Fal
     len_ax.legend(fancybox = True, ncol = 2)
     len_fig.savefig(os.path.join(direct_name, (save_name+"_" + quantity + "_correlation_length.pdf")), dpi = 400)
     np.save(os.path.join(direct_name, (str(normalize) +" correlation length.npy")),zip(vacancy, cor_length, id_number))
-
+    """
     ang_fig, ang_ax = plt.subplots(figsize = (10, 10))
     ang_ax.set_color_cycle([scalarMap.to_rgba(i) for i in range(NUM_COLORS)])
     height = 0
@@ -423,7 +425,7 @@ def diff_quantity_plot(file_name, save_name, quantity ,width = 5, vcompare = Fal
         for key in sort_keys:
             datas[name][float(key.split('/')[-2])] = cor_den[key][name]
     datas = dict(datas)
-    np.save('/Users/zhejunshen/Result/APS/traffic/flow_data.npy', datas)
+    #np.save('/Users/zhejunshen/Result/APS/traffic/flow_data.npy', datas)
     
     if dense:
         fig3, ax3 = plt.subplots()
@@ -678,7 +680,7 @@ def one_density_plots(prefix, width = 5, skip= 1, grad = False, filt = False, fp
     print(ring_data_result['v_average'])
     vcor, vmatrix,flow_rate = vdata_analysis(prefix, width = width, skip = skip, grad = grad, filt = filt, fps = fps)
     cor2d = auto_correlation_function_2d(vmatrix)
-    plot_2d_correlation(cor2d, prefix, width)
+    #plot_2d_correlation(cor2d, prefix, width)
     plot_time_corr(vcor, prefix, ring_data_result['number'], width)
     plot_vcross(ring_data_result['correlation'], prefix, width)
     plot_std(ring_data_result['vstd_t'], prefix, width)
