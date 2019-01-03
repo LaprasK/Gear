@@ -15,7 +15,7 @@ from collections import namedtuple
 from itertools import izip
 
 import numpy as np
-#from numpy.lib.function_base import _hist_bin_auto as hist_bin_auto
+from numpy import lib
 from scipy import ndimage
 from termcolor import colored
 # skimage (scikit-image) changed the location, names, and api of several
@@ -199,7 +199,7 @@ def filter_segments(labels, max_ecc, min_area, max_area, keep=False, conv = 0.2,
         rpropargs = labels, ['Area', 'Eccentricity', centroid], intensity
     else:
         rpropargs = labels, intensity
-    for rprop in regionprops(*rpropargs):
+    for rprop in regionprops(*rpropargs, coordinates='xy'):
         area = rprop['area']
         good = min_area <= area <= max_area
         if not (good or keep):
@@ -623,13 +623,13 @@ if __name__ == '__main__':
         ext = '.txt'+'.gz'*args.gz
     for dot, point, out, axis in zip(dots, points, outputs, axes):
         size = sizes[dot]
-        """
+        
         if args.plot:
             eax, aax = axis
             label = "{} eccen (max {})".format(dot, size['max_ecc'])
             eax.hist(point[:, 4], bins=40, range=(0, 1),
-                     alpha=0.5, c = 'r')
-            eax.axvline(size['max_ecc'], 0, 0.5, c='r', lw=2)
+                     alpha=0.5, color = 'r')
+            eax.axvline(size['max_ecc'], 0, 0.5, color='r', lw=2)
             eax.set_xlim(0, 1)
             eax.set_xticks(np.arange(0, 1.1, .1))
             eax.set_xticklabels(map('.{:d}'.format, np.arange(10)) + ['1'])
@@ -637,14 +637,14 @@ if __name__ == '__main__':
 
             areas = point[:, 5]
             amin, amax = size['min_area'], size['max_area']
-            s = np.ceil(hist_bin_auto(areas))
+            s = np.ceil(lib.histograms._hist_bin_auto(areas))
             bins = np.arange(amin, amax+s, s)
             label = "{} area ({} - {})".format(dot, amin, amax)
             aax.hist(areas, bins, alpha=0.5, color='g', label=label)
-            aax.axvline(size['min_area'], c='g', lw=2)
+            aax.axvline(size['min_area'], color='g', lw=2)
             aax.set_xlim(0, bins[-1])
             aax.legend(loc='best', fontsize='small')
-        """
+
         if args.save:
             print savenotice(dot, out, ext)
             np.savetxt(out+ext, point, header=hfmt.format(**size),
