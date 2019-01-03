@@ -627,8 +627,7 @@ if __name__ == '__main__':
         if args.plot:
             eax, aax = axis
             label = "{} eccen (max {})".format(dot, size['max_ecc'])
-            eax.hist(point[:, 4], bins=40, range=(0, 1),
-                     alpha=0.5, color = 'r')
+            #eax.hist(point[:, 4], bins=40, range=(0, 1), alpha=0.5, color = 'r')
             eax.axvline(size['max_ecc'], 0, 0.5, color='r', lw=2)
             eax.set_xlim(0, 1)
             eax.set_xticks(np.arange(0, 1.1, .1))
