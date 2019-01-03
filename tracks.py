@@ -166,7 +166,8 @@ twopi = 2*pi
 rt2 = sqrt(2)
 
 
-def find_closest(thisdot, trackids, n=1, maxdist=20., giveup=10, cut=False, pftrees = None, pfsets = None):
+def find_closest(thisdot, trackids, n=1, maxdist=20., giveup=10, cut=False, pftrees = None, pfsets = None, startframe = 0,
+                 startid = 0):
     """recursive function to find nearest dot in previous frame.
 
     looks further back until it finds the nearest particle
@@ -176,7 +177,7 @@ def find_closest(thisdot, trackids, n=1, maxdist=20., giveup=10, cut=False, pftr
     frame = thisdot[0]
     if cut is not False and cut[thisdot[-1]]: #[thisdot[-1]] is ID, if cut[ID] == true and cut so return -1
         return -1
-    if frame < n:  # at (or recursed back to) the first frame
+    if frame < n + startframe:  # at (or recursed back to) the first frame
         newtrackid = trackids.max() + 1
         if verbose:
             print info(newtrackid, frame, n, thisdot[-1]),  
@@ -191,7 +192,7 @@ def find_closest(thisdot, trackids, n=1, maxdist=20., giveup=10, cut=False, pftr
         closest = pfsets[frame-n].item(mini)  # get the nearest pt in the previous frame get the whole data.
         curtree = pftrees[frame] # current kDTree
         closestxy = closest[1:3] # get the position data of the nearest xy
-        mindist2, mini2 = curtree.query(closestxy, distance_upper_bound=mindist) # double check? the upper_bound is different from previous case
+        mindist2, mini2 = curtree.query(closestxy, distance_upper_bound=mindist) # lower bound 
         if mindist2 < mindist:  # I don't understand here
             # create new trackid to be deleted (or overwritten?)
             newtrackid = trackids.max() + 1 #it's a number here
@@ -209,7 +210,7 @@ def find_closest(thisdot, trackids, n=1, maxdist=20., giveup=10, cut=False, pftr
                 print "cutting track", trackids[closest[-1]]
             return newtrackid
         else:
-            oldtrackid = trackids[closest[-1]]  # this closest[-1] doesn't work if I filter the data!!!!
+            oldtrackid = trackids[closest[-1]-startid]  # id of pdata[0] 
             if oldtrackid == -1:
                 newtrackid = trackids.max() + 1
                 if verbose:
@@ -220,7 +221,8 @@ def find_closest(thisdot, trackids, n=1, maxdist=20., giveup=10, cut=False, pftr
                 return oldtrackid
     elif n < giveup:
         return find_closest(thisdot, trackids, n=n+1,
-                            maxdist=maxdist, giveup=giveup, cut=cut, pftrees = pftrees, pfsets = pfsets)
+                            maxdist=maxdist, giveup=giveup, cut=cut, pftrees = pftrees, pfsets = pfsets, 
+                            startframe = startframe, startid = startid)
     else:
         # give up after giveup frames
         newtrackid = trackids.max() + 1
@@ -230,7 +232,7 @@ def find_closest(thisdot, trackids, n=1, maxdist=20., giveup=10, cut=False, pftr
         return newtrackid
 
 
-def find_tracks(pdata, maxdist=20, giveup=10, n=0, stub=0,
+def find_tracks(pdata, maxdist=20, giveup=10, n=0, stub=0, startframe = 0,
                 cut=False, boundary=None, margin=0, pftrees = None, pfsets = None):
     """ Track dots from frame-to-frame, giving each particle a unique and
         persistent id, called the trackid.
@@ -285,11 +287,13 @@ def find_tracks(pdata, maxdist=20, giveup=10, n=0, stub=0,
         print 'with margin {:.1f} pix = {:.1f} mm'.format(margin, margin/mm)
 
     print "seeking tracks"
+    start_id = pdata[0][-1]
     for i in xrange(len(pdata)):
         # This must remain a simple loop because trackids gets modified
         # and passed into the function with each iteration
         trackids[i] = find_closest(pdata.item(i), trackids,
-                                   maxdist=maxdist, giveup=giveup, cut=cut, pftrees = pftrees, pfsets = pfsets)
+                                   maxdist=maxdist, giveup=giveup, cut=cut, pftrees = pftrees, pfsets = pfsets,
+                                   startframe = startframe, startid = start_id)
 #        print trackids[i]
 
 #    if verbose:

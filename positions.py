@@ -24,6 +24,7 @@ from termcolor import colored
 # enthought or conda), we must check for the version and import them from the
 # proper module and use them with the appropriate api syntax:
 from distutils.version import StrictVersion
+import matplotlib.pyplot as plt
 import skimage
 skimage_version = StrictVersion(skimage.__version__)
 from skimage.morphology import disk as skdisk
@@ -169,7 +170,7 @@ def label_particles_convolve(im, kern, thresh=3, rmv=None, **extra_args):
 Segment = namedtuple('Segment', 'x y label ecc area'.split())
 
 #rest 1
-def filter_segments(labels, max_ecc, min_area, max_area, keep=False,
+def filter_segments(labels, max_ecc, min_area, max_area, keep=False, conv = 0.2,
                     circ=None, intensity=None, **extra_args):
     """ filter out non-particle segments of an image based on shape criteria
 
@@ -207,6 +208,12 @@ def filter_segments(labels, max_ecc, min_area, max_area, keep=False,
         good &= ecc <= max_ecc
         if not (good or keep):
             continue
+        if conv:
+            convex = rprop['convex_area']
+            ratio = (convex - area)/float(area)
+            good &= (ratio < conv)
+            if not (good or keep):
+                continue
         x, y = rprop[centroid]
         if circ:
             xo, yo, ro = circ
@@ -234,7 +241,7 @@ def prep_image(imfile, width=2):
     """
     if args.verbose:
         print "opening", imfile
-    im = ndimage.imread(imfile).astype(float)
+    im = plt.imread(imfile).astype(float)
     if args.plot > 2:
         snapshot('orig', im, cmap='gray')
     if im.ndim == 3 and imfile.lower().endswith('jpg'):
@@ -450,7 +457,8 @@ if __name__ == '__main__':
                         'min_area': args.min or int(kern_area//2),
                         'max_area': args.max or int(kern_area*2 + 1),
                         'kern': args.kern,
-                        'thresh': args.thresh}}
+                        'thresh': args.thresh,
+                        'conv': 0.15}}
     if args.ckern:
         args.both = True
     if args.both:
@@ -459,7 +467,8 @@ if __name__ == '__main__':
                                  'min_area': args.cmin or int(ckern_area//2),
                                  'max_area': args.cmax or int(ckern_area*2 + 1),
                                  'kern': args.ckern,
-                                 'thresh': args.cthresh}})
+                                 'thresh': args.cthresh,
+                                 'conv': 0}})
     dots = sorted(sizes)
     meta.update({dot + '_' + k: v
                  for dot in dots for k, v in sizes[dot].iteritems()})
@@ -521,12 +530,13 @@ if __name__ == '__main__':
         pts_by_label[pts['label']] = pts
         pts = pts[segments[1]]
 
+
         plot_points(pts, convolved, name='CONVOLVED',
                     s=kwargs['kern'], c='r', cmap='viridis')
 
         labels_mask = np.where(labels, labels, np.nan)
         plot_points(pts, labels_mask, name='SEGMENTS',
-                    s=kwargs['kern'], c='k', cmap='prism_r')
+                    s=kwargs['kern'], c='k')#, cmap='prism_r')
 
         ecc_map = labels_mask*0
         ecc_map.flat = pts_by_label[labels.flat]['ecc']
@@ -611,14 +621,14 @@ if __name__ == '__main__':
                 'Frame    X           Y             Label  Eccen        Area')
         txtfmt = ['%6d', '%7.3f', '%7.3f', '%4d', '%1.3f', '%5d']
         ext = '.txt'+'.gz'*args.gz
-
     for dot, point, out, axis in zip(dots, points, outputs, axes):
         size = sizes[dot]
+        """
         if args.plot:
             eax, aax = axis
             label = "{} eccen (max {})".format(dot, size['max_ecc'])
             eax.hist(point[:, 4], bins=40, range=(0, 1),
-                     alpha=0.5, color='r', label=label)
+                     alpha=0.5, c = 'r')
             eax.axvline(size['max_ecc'], 0, 0.5, c='r', lw=2)
             eax.set_xlim(0, 1)
             eax.set_xticks(np.arange(0, 1.1, .1))
@@ -634,6 +644,7 @@ if __name__ == '__main__':
             aax.axvline(size['min_area'], c='g', lw=2)
             aax.set_xlim(0, bins[-1])
             aax.legend(loc='best', fontsize='small')
+        """
         if args.save:
             print savenotice(dot, out, ext)
             np.savetxt(out+ext, point, header=hfmt.format(**size),
@@ -650,3 +661,4 @@ if __name__ == '__main__':
             fig.savefig(prefix+'_SEGMENTSTATS.pdf')
     elif args.plot:
         plt.show()
+

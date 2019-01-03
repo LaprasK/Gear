@@ -64,7 +64,7 @@ def find_corner(particle, corners, nc, rc, drc=0, ang=None, dang=None,
             rank_by = 'ang'
             dang = np.inf
         # check the angle between corner displacements
-        corients = np.arctan2(cdisps[:, 1], cdisps[:, 0])[legal_dist]
+        corients = np.arctan2(cdisps[:, 1], cdisps[:, 0])[legal_dist]  #angle
         pairs = corr.pair_indices(len(corients), asarray=True)
         cangles = corr.dtheta(corients[pairs])
         dcangles = np.abs(cangles - ang)
@@ -89,14 +89,16 @@ def find_corner(particle, corners, nc, rc, drc=0, ang=None, dang=None,
                 # best not good enough
                 return (None,)*3
             legal = np.unique(pairs[best_pairs])
+            # note share a corner, then drop it?
+            # confusing corner? 
             if len(legal) > nc:
                 #best separation angles are disjoint (don't share a corner)
                 return (None,)*3
 
-    pcorner = corners[legal]
-    cdisp = cdisps[legal]
-    cdist = cdists[legal]
-    cdiffs = cdiffs[legal]
+    pcorner = corners[legal]  #absolute position
+    cdisp = cdisps[legal]  #displacement of 'legal' corners
+    cdist = cdists[legal]  
+    cdiffs = cdiffs[legal]  
 
     if do_average and nc > 1:
         # average the angle by finding angle of mean vector displacement
@@ -104,7 +106,7 @@ def find_corner(particle, corners, nc, rc, drc=0, ang=None, dang=None,
         meandisp = (cdisp/cdist[..., None]).mean(0)
         porient = np.arctan2(*meandisp[::-1]) % twopi
     else:
-        porient = np.arctan2(cdisp[..., 1], cdisp[..., 0]) % twopi
+        porient = np.arctan2(cdisp[..., 1], cdisp[..., 0]) % twopi  #orientations of each particle
 
     return pcorner, porient, cdist
 

@@ -116,8 +116,8 @@ def ring_velocity_derivatives(tdata, width=(0.575,), side=36, fps=2.5, x0 = 0,
                               y0 = 0, skip = 1, grad = False, start = 0):
     revised_shape = tuple(int((a - start - 1)/skip) + 1 if skip != 1 else a for a in tdata.shape) 
     shape = ((len(width),) if len(width) > 1 else ()) + revised_shape
-    vring_dtype = np.dtype({'names': 'f t x y o r corient vorient vo vx vy vring vpar v_p v_t'.split(),
-                        'formats': 'u2 i4 f4 f4 f4 f4 f4 f4 f4 f4 f4 f4 f4 f4 f4'.split()})
+    vring_dtype = np.dtype({'names': 'f t x y o r corient vorient vo vx vy vring vradi v_p v_t vomega'.split(),
+                        'formats': 'u2 i4 f4 f4 f4 f4 f4 f4 f4 f4 f4 f4 f4 f4 f4 f4'.split()})
     v = np.empty(shape, vring_dtype)
     x = tdata['f'][start::skip]/fps
     fields = 'f t x y o'.split()
@@ -129,7 +129,8 @@ def ring_velocity_derivatives(tdata, width=(0.575,), side=36, fps=2.5, x0 = 0,
     v['r'] = np.hypot(*[x_pos, y_pos])#/float(side)  # normalized by particle size
     angles = np.arctan2(*[y_pos, x_pos])
     v['corient'] = angles % (2*np.pi)
-    v['vorient'] = (angles - np.pi/2)%(2 * np.pi)   # velocity_orientation along the ring
+    # vorient is direction of vtheta
+    v['vorient'] = (angles + np.pi/2)%(2 * np.pi)   # velocity_orientation along the ring
     cos, sin = np.cos(v['vorient']), np.sin(v['vorient'])
     vcos, vsin = np.cos(v['o']),np.sin(v['o'])
     unit = {'vx': side, 'vy': side, 'vo': 1}
@@ -143,9 +144,11 @@ def ring_velocity_derivatives(tdata, width=(0.575,), side=36, fps=2.5, x0 = 0,
             v[v_temp[i]] = np.gradient(v[pos_temp[i]]/unit[v_temp[i]]/skip*fps).squeeze()
 #    v['v'] = np.hypot(v['x'], v['y'])
     v['vring'] = v['vx']*cos + v['vy']*sin
-    v['vpar'] = v['vx']*sin - v['vy']*cos
+    v['vradi'] = v['vx']*sin - v['vy']*cos
     v['v_p'] = v['vx']*vcos + v['vy']*vsin
     v['v_t'] = v['vx']*vsin - v['vy']*vcos
+    v['vomega'] = v['vo'] - v['vring']/v['r']
+    
 #    v['perp'] = v['x']*sin - v['y']*cos
 #    v0 = v['par'].mean(-1, keepdims=len(shape) > 1)
 #    v['etax'] = v['x'] - v0*cos

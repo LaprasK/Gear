@@ -262,6 +262,7 @@ def build_gs(data, framestep=1, dr=0.1, dmax=None, rmax=None, margin=0,
         dr: bin width in particle size units
         dmax: passed to radial distribution
         rmax: passed to radial distribution
+        
         margin: passed to radial distribution
 
     Returns
