@@ -15,7 +15,7 @@ from collections import namedtuple
 from itertools import izip
 
 import numpy as np
-from numpy.lib.function_base import _hist_bin_auto as hist_bin_auto
+#from numpy.lib.function_base import _hist_bin_auto as hist_bin_auto
 from scipy import ndimage
 from termcolor import colored
 # skimage (scikit-image) changed the location, names, and api of several
