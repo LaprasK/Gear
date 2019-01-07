@@ -548,7 +548,7 @@ def vdata_analysis(prefix, width = 5, skip = 1, start = 0, grad = False, filt = 
             if len(value['vring']) == length:
                 v_matrix = np.vstack((v_matrix, value['vring']))
         codata = value['corient']
-        passed = sum((codata[1:]-codata[:-1]) < -6)
+        passed = sum(np.abs((codata[1:]-codata[:-1])) > 6)
         flow += passed
     #calculate time correlation 
     for i in np.arange(v_matrix.shape[0]):
@@ -633,9 +633,9 @@ def one_density_analysis(prefix, width = 5, skip = 1, bulk = False, grad = False
         vr_time_op_t = np.append(vr_time_op_t, np.nanmean(layer_data['vring'] * np.sign(ring_orient)))
         op_t = np.append(op_t, np.nanmean(ring_orient))
         vring_t = np.append(vring_t, np.nanmean(layer_data['vring']))
-        ps.append(sum(ring_orient > 0))
-        ng.append(sum(ring_orient < 0))
-        diff.append(sum(ring_orient > 0) - sum(ring_orient < 0) )
+        #ps.append(sum(ring_orient > 0))
+        #ng.append(sum(ring_orient < 0))
+        #diff.append(sum(ring_orient > 0) - sum(ring_orient < 0) )
         # outring data, interaction into consideration
         if bulk:
             outdata = framedata[~mask]
