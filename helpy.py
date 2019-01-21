@@ -154,7 +154,7 @@ def splitter(data, indices, method=None,
     if method.lower().startswith('d'):
         di = np.diff(indices)
         if di.min() < 0:
-            print "Warning: nonincreasing index, switching to method = 'unique'"
+            print("Warning: nonincreasing index, switching to method = 'unique'")
             method = 'unique'
         di = di.nonzero()[0] + 1
         sects = [np.split(datum, di) for datum in data]
@@ -227,10 +227,10 @@ def groupby(arr, key, method, min_size=1):
         methods = ['bin,bool,bool', 'uniq,bool,bool', 'uniq,filt,bool',
                    # 'bin,bool,sort', 'uniq,bool,sort', 'uniq,where,sort',
                    'uniq,filt,sort', 'uniq,comp,sort']
-        print 'grouping'
+        print('grouping')
         groups = [groupby(arr, key, method=m, min_size=min_size)
                   for m in methods]
-        print 'checking'
+        print('checking')
         keys = [sorted(group.keys()) for group in groups]
         for ks in it.izip(*keys):
             for i in xrange(len(methods) - 1):
@@ -241,7 +241,7 @@ def groupby(arr, key, method, min_size=1):
                 assert k == l, msg(m, k, n, l)
                 msg = 'mismatch at {} between {} and {}'.format
                 assert np.allclose(g[l], h[l]), msg(l, m, n)
-        print 'Success!'
+        print('Success!')
         return
 
 
@@ -334,14 +334,15 @@ def nan_info(arr, verbose=False):
     if nnan:
         wnan = np.where(isnan)[0]
         if verbose:
-            print nnan, 'nans at', wnan[:10],
-            if nnan > 10:
-                print '...', wnan[:10][-10:],
-            print 'of', len(arr)
+            #print nnan, 'nans at', wnan[:10],
+            #if nnan > 10:
+            #    print '...', wnan[:10][-10:],
+            #print 'of', len(arr)
+            pass
     else:
         wnan = []
         if verbose:
-            print 'no nans'
+            print ('no nans')
     return isnan, nnan, wnan
 
 
@@ -477,9 +478,9 @@ def str_union(a, b=None):
         msg = "Lengths differ, resulting pattern may not match.\na: {}\nb: {}"
         # this seems to cause exception, not just warn?
         # raise RuntimeWarning(msg.format(a, b))
-        print '-'*79
-        print 'RuntimeWarning:', msg.format(a, b)
-        print '_'*79
+        print ('-'*79)
+        print ('RuntimeWarning:', msg.format(a, b))
+        print ('_'*79)
         l = ''.join([ac if ac == bc else '?' for ac, bc in it.izip(a, b)])
         r = ''.join([ac if ac == bc else '?'
                      for ac, bc in reversed(zip(*map(reversed, (a, b))))])
@@ -771,7 +772,7 @@ def meta_meta(patterns, include=set(), exclude=set()):
         patterns = [patterns]
     meta_names = [filename.replace('_META.txt', '') for p in patterns
                   for filename in glob.iglob(with_suffix(p, '_META.txt'))]
-    print '\n'.join(meta_names)
+    print('\n'.join(meta_names))
     if not meta_names:
         raise RuntimeError("No files found")
     bases = map(os.path.basename, meta_names)
@@ -989,28 +990,28 @@ def load_data(fullprefix, sets='tracks', verbose=False):
         except IOError as e:
             if s == 'p':
                 if verbose:
-                    print "No positions file, loading from tracks"
+                    print("No positions file, loading from tracks")
                 data[s] = data['t'] if 't' in data else load_data(fullprefix,
                                                                   't', verbose)
             elif s == 't':
                 if verbose:
-                    print "No tracks file, loading from positions"
+                    print("No tracks file, loading from positions")
                 if 'p' not in sets:
                     data['p'] = load_data(fullprefix, 'p', verbose)
                 needs_initialize = True
                 t = -1
             else:
-                print e
+                print(e)
                 cmd = '`tracks -{}`'.format(
                     {'t': 't', 'o': 'o', 'p': 'l', 'c': 'lc'}[s])
-                print ("Found no {} npz file. Please run ".format(setname) +
+                print (("Found no {} npz file. Please run ".format(setname) +
                        ("{0} to convert {1}.txt to {1}.npz, " +
                         "or run `positions` on your tiffs" if s in 'pc' else
-                        "{0} to generate {1}.npz").format(cmd, suffix))
+                        "{0} to generate {1}.npz").format(cmd, suffix)))
                 raise
         else:
             if verbose:
-                print "Loaded {} data from {}".format(setname, datapath)
+                print("Loaded {} data from {}".format(setname, datapath))
             data[s] = npzs[s][s*(s == 'o') + 'data']
             if s == 't' and 'trackids' in npzs['t'].files:
                 needs_initialize = True
@@ -1021,7 +1022,7 @@ def load_data(fullprefix, sets='tracks', verbose=False):
         # separate `trackids` array means this file is an old-style
         # TRACKS.npz which holds positions and trackids but no orient
         if verbose:
-            print "Converting to TRACKS array from positions, trackids, orient"
+            print("Converting to TRACKS array from positions, trackids, orient")
         if 'o' not in data:
             data['o'] = load_data(fullprefix, 'o', verbose)
         data['t'] = initialize_tdata(data['p'], t, data['o']['orient'])
@@ -1054,7 +1055,7 @@ def load_MSD(fullprefix, pos=True, ang=True):
             dtau = msadnpz['dtau'][()]
             dt0 = msadnpz['dt0'][()]
     ret += dtau, dt0
-    print 'loading MSDs for', fullprefix
+    print('loading MSDs for', fullprefix)
     return ret
 
 
@@ -1138,7 +1139,7 @@ def loadall(fullprefix, ret_msd=True, ret_fsets=False):
     """ returns data, tracksets, odata, otracksets,
          + (msds, msdids, msads, msadids, dtau, dt0) if ret_msd
     """
-    print "warning, this may not return what you want"
+    print("warning, this may not return what you want")
     data = load_data(fullprefix, 'tracks')
     tracksets = load_tracksets(data, odata, omask)
     ret = data, tracksets, odata, otracksets
@@ -1340,7 +1341,7 @@ def dtype_info(dtype='all'):
     dt = np.dtype(dtype)
     bits = 8*dt.itemsize
     if dt.kind == 'f':
-        print np.finfo(dt)
+        print(np.finfo(dt))
         return
     if dt.kind == 'u':
         mn = 0
@@ -1348,8 +1349,8 @@ def dtype_info(dtype='all'):
     elif dt.kind == 'i':
         mn = -2**(bits-1)
         mx = 2**(bits-1) - 1
-    print "{:6} ({}{}) min: {:20}, max: {:20}".format(
-                dt.name, dt.kind, dt.itemsize, mn, mx)
+    print("{:6} ({}{}) min: {:20}, max: {:20}".format(
+                dt.name, dt.kind, dt.itemsize, mn, mx))
 
 
 def txt_to_npz(datapath, verbose=False, compress=True):
@@ -1367,7 +1368,7 @@ def txt_to_npz(datapath, verbose=False, compress=True):
         else:
             raise IOError('File {} not found'.format(datapath))
     if verbose:
-        print "loading positions data from", datapath,
+        print("loading positions data from", datapath,)
     from numpy.lib.recfunctions import append_fields
     # successfully tested the following reduced datatype sizes on
     # Squares/diffusion/orientational/n464_CORNER_POSITIONS.npz
@@ -1380,11 +1381,11 @@ def txt_to_npz(datapath, verbose=False, compress=True):
     ids = np.arange(len(data), dtype='u4')
     data = append_fields(data, 'id', ids, usemask=False)
     if verbose:
-        print '...',
+        print('...',)
     outpath = datapath[:datapath.rfind('txt')] + 'npz'
     (np.savez, np.savez_compressed)[compress](outpath, data=data)
     if verbose:
-        print 'and saved to', outpath
+        print('and saved to', outpath)
     return
 
 
@@ -1407,7 +1408,7 @@ def compress_existing_npz(path, overwrite=False, careful=False):
                     'FAIL {}[{}] --> {}'.format(path, n, out)
         if overwrite:
             os.rename(out, path)
-        print 'Success!'
+        print('Success!')
 
 
 def merge_data(members, savename=None, dupes=False, do_orient=False):
@@ -1445,7 +1446,7 @@ def merge_data(members, savename=None, dupes=False, do_orient=False):
 
     if isinstance(members[0], basestring):
         members.sort()
-        print '\n\t'.join(['Merging:'] + members)
+        print('\n\t'.join(['Merging:'] + members))
         datasets = map(load_data, members)
     else:
         datasets = members
@@ -1469,7 +1470,7 @@ def merge_data(members, savename=None, dupes=False, do_orient=False):
                                  excl_start=('fit_',))
         savedir = os.path.dirname(savename) or os.path.curdir
         if not os.path.exists(savedir):
-            print "Creating new directory", savedir
+            print("Creating new directory", savedir)
             os.makedirs(savedir)
         if n*len(members[0]) > 200:
             pattern = pattern or str_union(members)
@@ -1488,7 +1489,7 @@ def merge_data(members, savename=None, dupes=False, do_orient=False):
         dt = dict(merged.dtype.fields)
         dt.pop('xy', None)
         np.savez_compressed(savename, data=merged.view(dt))
-        print "saved merged tracks to", savename
+        print("saved merged tracks to", savename)
     return merged
 
 
@@ -1609,9 +1610,9 @@ def circle_three_points(*xs):
 
 def parse_slice(desc, shape=0, index_array=False):
     if desc is True:
-        print "enter number or range as slice start:end",
+        print("enter number or range as slice start:end",)
         if shape:
-            print "for shape {}".format(shape),
+            print("for shape {}".format(shape),)
         desc = raw_input('\n>>> ')
     if isinstance(desc, slice):
         slice_obj = desc
@@ -1659,7 +1660,7 @@ def find_tiffs(path='', prefix='', meta='', frames='', single=False,
     tar = path.endswith(('.tar', '.tbz', '.tgz')) and os.path.isfile(path)
     if tar:
         if verbose:
-            print 'loading tarfile', os.path.basename(path)
+            print('loading tarfile', os.path.basename(path))
         import tarfile
         tar = tarfile.open(path)
         fnames = [f for f in tar if f.name.endswith('.tif')]
@@ -1668,7 +1669,7 @@ def find_tiffs(path='', prefix='', meta='', frames='', single=False,
             path = os.path.join(path, '*.tif')
         if glob.has_magic(path):
             if verbose:
-                print 'seeking matches to\n\t"{}"'.format(path)
+                print('seeking matches to\n\t"{}"'.format(path))
             fnames = glob.glob(path)
         elif os.path.isfile(path):
             fnames = [path]
@@ -1681,7 +1682,7 @@ def find_tiffs(path='', prefix='', meta='', frames='', single=False,
             fnames = fnames[fnames.index(first_frame):]
         nfound = len(fnames)
         if verbose or frames is True:
-            print '\tfound {} matches'.format(nfound)
+            print('\tfound {} matches'.format(nfound))
         if single:
             frames = slice(int(frames), int(frames)+1)
             path = fnames[0]
@@ -1691,12 +1692,12 @@ def find_tiffs(path='', prefix='', meta='', frames='', single=False,
         if load:
             from scipy.ndimage import imread
             if verbose:
-                print '\tloading {} images'.format(len(fnames)),
+                print('\tloading {} images'.format(len(fnames)),)
             batchsize = 50
             ims = []
             for batch_i in xrange(0, len(fnames), batchsize):
                 if verbose:
-                    print '.',
+                    print('.',)
                 batch = fnames[batch_i:batch_i+batchsize]
                 if tar:
                     batch = map(tar.extractfile, batch)
@@ -1708,18 +1709,18 @@ def find_tiffs(path='', prefix='', meta='', frames='', single=False,
                     ims.extend(imbatch)
             fnames = np.squeeze(ims)
             if verbose:
-                print 'loaded'
+                print('loaded')
         if tar:
             tar.close()
         return path, fnames, frames.indices(nfound)
     else:
-        print "No files found; please correct the path"
-        print "the following substitutions will be made:"
+        print("No files found; please correct the path")
+        print("the following substitutions will be made:")
         substr = ("{{prefix}} --> {prefix}\n"
                   "{{meta}}   --> {meta}")
         subval = dict(prefix=prefix, meta=meta.get('path_to_tiffs', ''))
-        print substr.format(**subval)
-        print '    {}'.format(path)
+        print(substr.format(**subval))
+        print('    {}'.format(path))
         new_path = raw_input('>>> ').format(**subval)
         return find_tiffs(path=new_path, prefix=prefix, meta=meta,
                           frames=frames, single=single, load=load, verbose=True)
@@ -1756,10 +1757,10 @@ def circle_click(im):
            (center) from an outer scope
         """
         clicks.append([click.ydata, click.xdata])
-        print 'click {}: x: {:.2f}, y: {:.2f}'.format(len(clicks), *clicks[-1])
+        print('click {}: x: {:.2f}, y: {:.2f}'.format(len(clicks), *clicks[-1]))
         if len(clicks) == 3:
             center.extend(circle_three_points(clicks))
-            print 'center {:.2f}, {:.2f}, radius {:.2f}'.format(*center)
+            print('center {:.2f}, {:.2f}, radius {:.2f}'.format(*center))
             cpatch = matplotlib.patches.Circle(
                 center[1::-1], center[2], linewidth=3, color='g', fill=False)
             ax.add_patch(cpatch)
@@ -1866,7 +1867,7 @@ def check_neighbors(prefix, frame, data=None, im=None, **neighbor_args):
         ns, ds = ns[~m], ds[~m]
         if len(ns) == 0:
             continue
-        print fmt(d['id'], d['t'], len(ns), ds.min(), ds.max(), ds.mean())
+        print(fmt(d['id'], d['t'], len(ns), ds.min(), ds.max(), ds.mean()))
         # print '\tneighbors:', (len(ns)*'{:5d} ').format(*ns)
         # print '\tdistances:', (len(ns)*'{:5.2f} ').format(*ds)
         ax.scatter(*positions.T[::-1], c='k', marker='o')
@@ -1889,7 +1890,7 @@ def derivwidths(w, dx, sigmas, order):
     ax.plot(x, y, '-k', zorder=10)
     ax.plot(x, dy, '-k', zorder=10)
     sigmin, sigptp = min(sigmas), np.ptp(sigmas)
-    print 'sigma\tsum(g)\tsum(abs(g))\tptp\tchi2'
+    print('sigma\tsum(g)\tsum(abs(g))\tptp\tchi2')
     for sigma in sigmas:
         c = plt.cm.jet((sigma-sigmin)/sigptp)
         g = gaussian_filter1d(y, sigma, order=order, truncate=w/sigma)/dx
@@ -1897,8 +1898,8 @@ def derivwidths(w, dx, sigmas, order):
         ax.plot(x, g, alpha=.5, c=c)
         # ax.plot(x, gi, ':', c=c)
         ax.plot(x, np.cumsum(g)*dx, '--', alpha=.75, c=c)
-        print ('{:.3f}\t'*5).format(
-            sigma, g.sum(), np.abs(g).sum(), g.ptp(), ((g-dy)**2).sum())
+        print(('{:.3f}\t'*5).format(
+            sigma, g.sum(), np.abs(g).sum(), g.ptp(), ((g-dy)**2).sum()))
 
 
 class SciFormatter(Formatter):
